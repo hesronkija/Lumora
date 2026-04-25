@@ -1,0 +1,111 @@
+services:
+  # ─────────────────────────────── PostgreSQL ──────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lumora
+      POSTGRES_PASSWORD: lumora
+      POSTGRES_DB: lumora
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lumora']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ────────────────────────────────── Redis ────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────── Keycloak ────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: dev-file
+      KC_HOSTNAME_STRICT: 'false'
+      KC_HTTP_ENABLED: 'true'
+    volumes:
+      - ./infra/keycloak/realm-lumora.json:/opt/keycloak/data/import/realm-lumora.json
+    ports:
+      - '8080:8080'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:8080/health/ready || exit 1']
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # ────────────────────────── Mailhog (dev email) ──────────────────────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - '1025:1025' # SMTP
+      - '8025:8025' # Web UI
+
+  # ──────────────────────────────── Temporal ───────────────────────────────────
+  temporal:
+    image: temporalio/auto-setup:1.24
+    environment:
+      DB: postgresql
+      DB_PORT: 5432
+      POSTGRES_USER: lumora
+      POSTGRES_PWD: lumora
+      POSTGRES_SEEDS: postgres
+    ports:
+      - '7233:7233'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  temporal-ui:
+    image: temporalio/ui:2.28.0
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+    ports:
+      - '8088:8080'
+    depends_on:
+      - temporal
+
+  # ──────────────────────── OpenTelemetry Collector ────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.99.0
+    volumes:
+      - ./infra/docker/otel-collector.yml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - '4317:4317'
+      - '4318:4318'
+    command: ['--config=/etc/otelcol-contrib/config.yaml']
+
+  # ─────────────────────────── Grafana (local metrics) ─────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/docker/grafana-provisioning:/etc/grafana/provisioning
+    ports:
+      - '3100:3000'
+    depends_on:
+      - otel-collector
+
+volumes:
+  postgres_data:
+  grafana_data:
