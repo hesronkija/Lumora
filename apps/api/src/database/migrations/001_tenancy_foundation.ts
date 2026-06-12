@@ -80,7 +80,7 @@ export async function up(knex: Knex): Promise<void> {
     t.uuid('resource_id');
     t.jsonb('before');
     t.jsonb('after');
-    t.inet('ip');
+    t.specificType('ip', 'inet');
     t.string('user_agent', 500);
     t.timestamp('at').notNullable().defaultTo(knex.fn.now());
   });

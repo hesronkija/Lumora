@@ -1,11 +1,12 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { DB_POOL } from '../../database/database.module';
 import { SelcomAdapter } from './adapters/selcom.adapter';
 import { BankAdapter } from './adapters/bank.adapter';
 import { GepgAdapter } from './adapters/gepg.adapter';
 import type { ReconcileEntry } from './adapters/payment-adapter.interface';
 import { v4 as uuidv4 } from 'uuid';
+import { runAsTenant } from '@lumora/shared-tenancy';
 
 /**
  * Nightly reconciliation engine.
@@ -41,9 +42,11 @@ export class ReconciliationService {
     const toDate = new Date(fromDate);
     toDate.setHours(23, 59, 59, 999);
 
+    // Works both inside a request and from workers/schedulers: the tenant
+    // context is forced explicitly so the TenantAwarePool applies RLS.
+    return runAsTenant(tenantId, async () => {
     const client = await this.pool.connect();
     try {
-      await client.query(`SET LOCAL app.current_tenant_id = $1`, [tenantId]);
 
       const { rows: runRows } = await client.query(
         `INSERT INTO reconciliation_run (id, tenant_id, run_date, status)
@@ -80,6 +83,7 @@ export class ReconciliationService {
     } finally {
       client.release();
     }
+    });
   }
 
   private async fetchAllEntries(req: { fromDate: Date; toDate: Date }): Promise<Array<ReconcileEntry & { source: string }>> {
@@ -91,7 +95,7 @@ export class ReconciliationService {
   }
 
   private async processEntry(
-    client: Awaited<ReturnType<Pool['connect']>>,
+    client: PoolClient,
     tenantId: string,
     runId: string,
     entry: ReconcileEntry & { source: string },

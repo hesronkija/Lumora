@@ -47,7 +47,7 @@ export class SesAdapter {
         }),
       );
 
-      return { success: true, providerMessageId: result.MessageId };
+      return { success: true, ...(result.MessageId ? { providerMessageId: result.MessageId } : {}) };
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'SES error';
       return { success: false, error: msg };

@@ -49,15 +49,15 @@ export async function up(knex: Knex): Promise<void> {
   await knex.raw(`
     CREATE POLICY audit_insert_only ON "audit_log"
       AS RESTRICTIVE
-      TO lumora_app
       FOR INSERT
+      TO lumora_app
       WITH CHECK (true)
   `);
   await knex.raw(`
     CREATE POLICY audit_select_own_tenant ON "audit_log"
       AS PERMISSIVE
-      TO lumora_app
       FOR SELECT
+      TO lumora_app
       USING (
         tenant_id IS NULL
         OR tenant_id = current_setting('app.current_tenant_id', true)::uuid

@@ -1,6 +1,6 @@
 import { Injectable, Inject, ConflictException, NotFoundException } from '@nestjs/common';
 import type { Pool } from 'pg';
-import { DB_POOL } from '../../database/database.module';
+import { DB_POOL_SYSTEM } from '../../database/database.module';
 import { AuditService } from '../audit/audit.service';
 import { v4 as uuidv4 } from 'uuid';
 import { ROLES } from '@lumora/shared-auth';
@@ -25,7 +25,9 @@ export interface Tenant {
 @Injectable()
 export class TenancyService {
   constructor(
-    @Inject(DB_POOL) private readonly pool: Pool,
+    // Tenant provisioning is a platform-level operation that happens before
+    // a tenant context exists — it must use the system pool deliberately.
+    @Inject(DB_POOL_SYSTEM) private readonly pool: Pool,
     private readonly audit: AuditService,
   ) {}
 

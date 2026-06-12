@@ -8,6 +8,7 @@ import type {
   ReconcileBatchRequest,
   ReconcileEntry,
 } from './payment-adapter.interface';
+import { verifyHmacWebhook } from './webhook-signature';
 import crypto from 'crypto';
 
 /**
@@ -79,7 +80,7 @@ export class SelcomAdapter implements IPaymentAdapter {
       if (data.result !== 'SUCCESS') {
         return { success: false, error: data.message ?? 'Selcom error' };
       }
-      return { success: true, providerRef: data.transid };
+      return { success: true, ...(data.transid ? { providerRef: data.transid } : {}) };
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Network error' };
     }
@@ -93,6 +94,17 @@ export class SelcomAdapter implements IPaymentAdapter {
     });
     const data = (await resp.json()) as { result: string };
     return { success: data.result === 'SUCCESS', providerRef };
+  }
+
+  verifyWebhook(payload: WebhookPayload): boolean {
+    // Selcom signs callbacks with HMAC-SHA256 over `${timestamp}${rawBody}`
+    // using the API secret, base64-encoded (mirror of outbound signing).
+    return verifyHmacWebhook(payload, {
+      header: 'x-selcom-signature',
+      secret: process.env['SELCOM_API_SECRET'],
+      encoding: 'base64',
+      message: (p) => `${p.headers['x-selcom-timestamp'] ?? p.headers['timestamp'] ?? ''}${p.rawBody}`,
+    });
   }
 
   async handleWebhook(payload: WebhookPayload): Promise<WebhookResult> {

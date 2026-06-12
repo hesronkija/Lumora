@@ -65,7 +65,7 @@ export class VfmsAdapter {
       }
 
       const result = (await resp.json()) as { receipt_no: string; receipt_url?: string };
-      return { receiptNo: result.receipt_no, receiptUrl: result.receipt_url };
+      return { receiptNo: result.receipt_no, ...(result.receipt_url ? { receiptUrl: result.receipt_url } : {}) };
     } catch (err) {
       this.logger.error(`VFMS error: ${err instanceof Error ? err.message : 'unknown'}`);
       return null;

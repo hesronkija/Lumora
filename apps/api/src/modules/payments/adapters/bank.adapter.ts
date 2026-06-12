@@ -8,6 +8,7 @@ import type {
   ReconcileBatchRequest,
   ReconcileEntry,
 } from './payment-adapter.interface';
+import { verifyHmacWebhook } from './webhook-signature';
 
 /**
  * Bank adapter covering NMB Direct Banking API and CRDB SimBanking biller.
@@ -67,7 +68,7 @@ export class BankAdapter implements IPaymentAdapter {
       if (data.status !== 'success') {
         return { success: false, error: data.error ?? `${this.provider} registration failed` };
       }
-      return { success: true, providerRef: data.reference };
+      return { success: true, ...(data.reference ? { providerRef: data.reference } : {}) };
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Network error' };
     }
@@ -80,6 +81,14 @@ export class BankAdapter implements IPaymentAdapter {
     });
     const data = (await resp.json()) as { status: string };
     return { success: data.status === 'paid', providerRef };
+  }
+
+  verifyWebhook(payload: WebhookPayload): boolean {
+    const envKey = `${this.provider.toUpperCase()}_WEBHOOK_SECRET`; // NMB_/CRDB_WEBHOOK_SECRET
+    return verifyHmacWebhook(payload, {
+      header: 'x-bank-signature',
+      secret: process.env[envKey] ?? process.env['BANK_WEBHOOK_SECRET'],
+    });
   }
 
   async handleWebhook(payload: WebhookPayload): Promise<WebhookResult> {

@@ -46,7 +46,6 @@ export class ExamsService {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.current_tenant_id = $1`, [tenantId]);
 
       for (const score of scores) {
         await client.query(
@@ -126,10 +125,10 @@ export class ExamsService {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.current_tenant_id = $1`, [tenantId]);
 
       for (let i = 0; i < ranked.length; i++) {
         const student = ranked[i];
+        if (!student) continue;
         await client.query(
           `INSERT INTO report_card
             (id, tenant_id, student_id, term_id, class_id, average_marks, position_in_class, total_students_in_class, status)

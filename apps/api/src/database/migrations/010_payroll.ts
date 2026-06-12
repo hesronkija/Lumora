@@ -27,6 +27,46 @@ export async function up(knex: Knex): Promise<void> {
     t.timestamps(true, true);
   });
 
+
+  // ---------------------------------------------------------------------------
+  // Staff / HR registry (referenced by payslips, timetable, transport)
+  // ---------------------------------------------------------------------------
+  await knex.schema.createTable('staff', (t) => {
+    t.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
+    t.uuid('tenant_id').notNullable().references('id').inTable('tenant').onDelete('CASCADE');
+    t.uuid('user_id').references('id').inTable('user'); // optional login account
+    t.string('employee_no', 30).notNullable();
+    t.string('legal_name', 200).notNullable();
+    t.enum('gender', ['male', 'female']).notNullable();
+    t.date('dob');
+    t.string('phone', 20);
+    t.string('email', 200);
+    t.string('tin', 20); // TRA taxpayer ID
+    t.string('nida', 30); // national ID
+    t.string('tsc_number', 30); // Teachers Service Commission no. (public teachers)
+    t.string('nssf_number', 30);
+    t.string('nhif_number', 30);
+    t.boolean('has_heslb_loan').notNullable().defaultTo(false);
+    t.enum('pension_fund', ['nssf', 'psssf', 'none']).notNullable().defaultTo('nssf');
+    t.enum('contract_type', ['permanent', 'contract', 'part_time', 'volunteer', 'tsc_seconded'])
+      .notNullable().defaultTo('permanent');
+    t.string('position', 100).notNullable(); // e.g. Teacher, Bursar, Matron, Driver
+    t.string('department', 100);
+    t.specificType('basic_salary', 'numeric(18,4)').notNullable().defaultTo(0);
+    t.jsonb('allowances').notNullable().defaultTo('[]'); // [{code,label,amount}]
+    t.string('bank_name', 100);
+    t.string('bank_account', 50);
+    t.string('mobile_number', 20); // for mobile-money disbursement
+    t.enum('disbursement_method', ['bank', 'mobile_money', 'cash']).notNullable().defaultTo('bank');
+    t.date('employment_start');
+    t.date('employment_end');
+    t.jsonb('qualifications').notNullable().defaultTo('[]');
+    t.boolean('active').notNullable().defaultTo(true);
+    t.timestamps(true, true);
+    t.unique(['tenant_id', 'employee_no']);
+    t.index(['tenant_id', 'active']);
+  });
+
   // ---------------------------------------------------------------------------
   // Payroll Runs
   // ---------------------------------------------------------------------------
@@ -174,5 +214,6 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists('payslip');
   await knex.schema.dropTableIfExists('payroll_run');
+  await knex.schema.dropTableIfExists('staff');
   await knex.schema.dropTableIfExists('statutory_rate');
 }

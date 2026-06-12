@@ -8,6 +8,7 @@ import type {
   ReconcileBatchRequest,
   ReconcileEntry,
 } from './payment-adapter.interface';
+import { verifyHmacWebhook } from './webhook-signature';
 
 /**
  * Government Electronic Payment Gateway (GePG) adapter.
@@ -42,6 +43,16 @@ export class GepgAdapter implements IPaymentAdapter {
   async statusCheck(providerRef: string): Promise<ChargeResult> {
     if (this.isStub) return { success: true, providerRef };
     return { success: false, error: 'Not implemented' };
+  }
+
+  verifyWebhook(payload: WebhookPayload): boolean {
+    // GePG production callbacks are PKI-signed XML; for the JSON bridge we
+    // verify an HMAC-SHA256 digest of the raw body shared at onboarding.
+    return verifyHmacWebhook(payload, {
+      header: 'gepg-signature',
+      secret: process.env['GEPG_WEBHOOK_SECRET'],
+      encoding: 'base64',
+    });
   }
 
   async handleWebhook(payload: WebhookPayload): Promise<WebhookResult> {

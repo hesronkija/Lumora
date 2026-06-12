@@ -117,6 +117,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@lumora/domain-ai':
+        specifier: workspace:*
+        version: link:../../packages/domain-ai
       '@lumora/shared-auth':
         specifier: workspace:*
         version: link:../../packages/shared-auth
@@ -453,6 +456,9 @@ importers:
         specifier: workspace:*
         version: link:../shared-tenancy
     devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.39
       typescript:
         specifier: ^5.4.0
         version: 5.9.3

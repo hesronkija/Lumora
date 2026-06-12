@@ -1,9 +1,12 @@
-import { Injectable, Inject, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable, Inject, NotFoundException, ConflictException,
+  BadRequestException, UnauthorizedException,
+} from '@nestjs/common';
 import type { Pool } from 'pg';
-import { DB_POOL } from '../../database/database.module';
+import { DB_POOL, DB_POOL_SYSTEM } from '../../database/database.module';
 import { AuditService } from '../audit/audit.service';
 import { FeesService } from '../fees/fees.service';
-import { TenantStorage } from '@lumora/shared-tenancy';
+import { TenantStorage, runAsTenant } from '@lumora/shared-tenancy';
 import { SelcomAdapter } from './adapters/selcom.adapter';
 import { BankAdapter } from './adapters/bank.adapter';
 import { GepgAdapter } from './adapters/gepg.adapter';
@@ -34,6 +37,10 @@ export class PaymentsService {
 
   constructor(
     @Inject(DB_POOL) private readonly pool: Pool,
+    // Webhooks arrive unauthenticated (no tenant context) — they resolve the
+    // tenant from the control number via the system pool, then run the
+    // mutation inside runAsTenant() so RLS still applies to every write.
+    @Inject(DB_POOL_SYSTEM) private readonly systemPool: Pool,
     private readonly audit: AuditService,
     private readonly feesService: FeesService,
     private readonly selcom: SelcomAdapter,
@@ -62,10 +69,11 @@ export class PaymentsService {
   async initiatePayment(dto: InitiatePaymentDto) {
     const { tenantId } = TenantStorage.get();
 
-    // Idempotency check
+    // Idempotency check — tenant-scoped (RLS also enforces this; the explicit
+    // predicate is defence in depth and keeps the index usable).
     const existing = await this.pool.query(
-      `SELECT * FROM payment WHERE idempotency_key = $1`,
-      [dto.idempotencyKey],
+      `SELECT * FROM payment WHERE idempotency_key = $1 AND tenant_id = $2`,
+      [dto.idempotencyKey, tenantId],
     );
     if (existing.rowCount && existing.rowCount > 0) {
       return existing.rows[0];
@@ -83,10 +91,10 @@ export class PaymentsService {
 
     const chargeResult = await adapter.createCharge({
       idempotencyKey: dto.idempotencyKey,
-      amount: amount.toInteger().toNumber(),
+      amount: amount.toDecimalPlaces(0).toNumber(),
       currency: 'TZS',
-      payerPhone: dto.payerPhone,
-      payerName: dto.payerName,
+      ...(dto.payerPhone ? { payerPhone: dto.payerPhone } : {}),
+      ...(dto.payerName ? { payerName: dto.payerName } : {}),
       controlNo: invoice.control_no as string,
       description: `Fee payment: ${invoice.invoice_no as string}`,
       callbackUrl,
@@ -120,60 +128,80 @@ export class PaymentsService {
     const adapter = this.adapters.get(providerKey);
     if (!adapter) throw new NotFoundException(`Unknown provider: ${providerKey}`);
 
+    // SECURITY: never process an unverified webhook.
+    if (!adapter.verifyWebhook(payload)) {
+      throw new UnauthorizedException('Invalid webhook signature');
+    }
+
     const result = await adapter.handleWebhook(payload);
     if (result.status !== 'completed') return { processed: false, status: result.status };
 
-    // Look up payment by control number
-    const { rows: invoiceRows } = await this.pool.query(
+    // Webhooks carry no JWT, so the tenant is resolved from the control
+    // number via the system pool — the only deliberate cross-tenant read.
+    const { rows: invoiceRows } = await this.systemPool.query(
       `SELECT * FROM invoice WHERE control_no = $1`,
       [result.controlNo],
     );
     const invoice = invoiceRows[0];
     if (!invoice) return { processed: false, reason: 'invoice_not_found' };
 
-    const { rows: paymentRows } = await this.pool.query(
-      `SELECT * FROM payment WHERE provider_ref = $1`,
-      [result.providerRef],
-    );
-
-    let paymentId: string;
-    if (paymentRows[0]) {
-      // Update existing pending payment
-      await this.pool.query(
-        `UPDATE payment SET status = 'completed', paid_at = $1, updated_at = NOW() WHERE id = $2`,
-        [result.paidAt, paymentRows[0].id],
+    // Everything below runs inside the invoice's tenant context, so RLS
+    // applies to every read and write exactly as in a user request.
+    return runAsTenant(invoice.tenant_id as string, async () => {
+      const { rows: paymentRows } = await this.pool.query(
+        `SELECT * FROM payment WHERE provider_ref = $1`,
+        [result.providerRef],
       );
-      paymentId = paymentRows[0].id as string;
-    } else {
-      // Webhook arrived without a preceding initiate (e.g. direct bank payment)
-      const { rows } = await this.pool.query(
-        `INSERT INTO payment
-          (id, tenant_id, invoice_id, amount, channel, provider, provider_ref, idempotency_key, status, payer_phone, payer_name, paid_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'completed',$9,$10,$11)
-         RETURNING id`,
-        [
-          uuidv4(), invoice.tenant_id, invoice.id,
-          result.amount.toFixed(4), adapter.channel, adapter.provider,
-          result.providerRef, `wh-${result.providerRef}`,
-          result.payerPhone ?? null, result.payerName ?? null, result.paidAt,
-        ],
-      );
-      paymentId = rows[0].id as string;
-    }
 
-    await this.feesService.updatePaymentBalance(invoice.id as string, new Decimal(result.amount));
+      // Replay protection: a completed payment for this provider ref is final.
+      if (paymentRows[0]?.status === 'completed') {
+        return { processed: true, paymentId: paymentRows[0].id as string, replay: true };
+      }
 
-    // Issue TRA fiscal receipt for VRN schools (best-effort, non-blocking)
-    this.issueFiscalReceiptIfRequired(invoice, result.amount, paymentId, adapter.channel).catch(() => null);
+      let paymentId: string;
+      if (paymentRows[0]) {
+        // Update existing pending payment
+        await this.pool.query(
+          `UPDATE payment SET status = 'completed', paid_at = $1, updated_at = NOW() WHERE id = $2`,
+          [result.paidAt, paymentRows[0].id],
+        );
+        paymentId = paymentRows[0].id as string;
+      } else {
+        // Webhook arrived without a preceding initiate (e.g. direct bank payment)
+        const { rows } = await this.pool.query(
+          `INSERT INTO payment
+            (id, tenant_id, invoice_id, amount, channel, provider, provider_ref, idempotency_key, status, payer_phone, payer_name, paid_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'completed',$9,$10,$11)
+           ON CONFLICT (idempotency_key) DO NOTHING
+           RETURNING id`,
+          [
+            uuidv4(), invoice.tenant_id, invoice.id,
+            result.amount.toFixed(4), adapter.channel, adapter.provider,
+            result.providerRef, `wh-${result.providerRef}`,
+            result.payerPhone ?? null, result.payerName ?? null, result.paidAt,
+          ],
+        );
+        if (!rows[0]) {
+          // Concurrent duplicate delivery lost the race — treat as replay.
+          return { processed: true, replay: true };
+        }
+        paymentId = rows[0].id as string;
+      }
 
-    await this.audit.log({
-      action: 'payment.completed',
-      resource: 'payment',
-      resourceId: paymentId,
-      after: { providerRef: result.providerRef, amount: result.amount, paidAt: result.paidAt },
+      await this.feesService.updatePaymentBalance(invoice.id as string, new Decimal(result.amount));
+
+      // Issue TRA fiscal receipt for VRN schools (best-effort, non-blocking)
+      this.issueFiscalReceiptIfRequired(invoice, result.amount, paymentId, adapter.channel).catch(() => null);
+
+      await this.audit.log({
+        action: 'payment.completed',
+        resource: 'payment',
+        resourceId: paymentId,
+        after: { providerRef: result.providerRef, amount: result.amount, paidAt: result.paidAt },
+      });
+
+      return { processed: true, paymentId };
     });
-
-    return { processed: true, paymentId };
   }
 
   private async issueFiscalReceiptIfRequired(

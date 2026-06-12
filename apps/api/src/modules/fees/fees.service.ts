@@ -121,10 +121,12 @@ export class FeesService {
     const tenantPrefix = tenantId.replace(/-/g, '').slice(-4);
     const controlNo = generateControlNumber(tenantPrefix, seq);
 
+    // NOTE: `SET LOCAL x = $1` is invalid Postgres and used to crash here.
+    // The TenantAwarePool now sets the tenant GUC on connect(), so the
+    // transaction below runs fully RLS-scoped without manual GUC work.
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.current_tenant_id = $1`, [tenantId]);
 
       const { rows } = await client.query(
         `INSERT INTO invoice

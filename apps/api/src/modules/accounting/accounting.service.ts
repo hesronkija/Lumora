@@ -20,8 +20,8 @@ export interface AccountDto {
 
 export interface JournalLineDto {
   accountId: string;
-  dr: string; // decimal string
-  cr: string;
+  dr?: string; // decimal string; omitted ⇒ '0'
+  cr?: string;
   description?: string;
 }
 
@@ -201,7 +201,6 @@ export class AccountingService {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.current_tenant_id = $1`, [tenantId]);
 
       // Sequential entry number
       const { rows: countRows } = await client.query(

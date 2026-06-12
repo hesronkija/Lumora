@@ -37,8 +37,6 @@ export class AttendanceService {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.current_tenant_id = $1`, [tenantId]);
-      await client.query(`SET LOCAL app.current_user_id = $1`, [data.takenBy]);
 
       const sessionId = uuidv4();
       await client.query(

@@ -28,6 +28,10 @@ export class CashAdapter implements IPaymentAdapter {
     return { success: true, providerRef };
   }
 
+  verifyWebhook(_payload: WebhookPayload): boolean {
+    return false; // Cash never receives webhooks — always reject.
+  }
+
   async handleWebhook(_payload: WebhookPayload): Promise<WebhookResult> {
     throw new Error('Cash adapter does not handle webhooks');
   }

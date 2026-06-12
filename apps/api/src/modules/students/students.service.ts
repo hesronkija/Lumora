@@ -81,7 +81,7 @@ export class StudentsService {
     );
     if (!rows[0]) throw new NotFoundException('Student not found');
 
-    await this.audit.log({ action: 'student.update', resource: 'student', resourceId: studentId, after: dto });
+    await this.audit.log({ action: 'student.update', resource: 'student', resourceId: studentId, after: { ...dto } });
     return rows[0];
   }
 
@@ -99,7 +99,7 @@ export class StudentsService {
       [uuidv4(), studentId, guardianId, dto.isPrimary ?? false, dto.canPickup ?? false, dto.finResponsible ?? false],
     );
 
-    await this.audit.log({ action: 'student.add_guardian', resource: 'guardian', resourceId: guardianId, after: dto });
+    await this.audit.log({ action: 'student.add_guardian', resource: 'guardian', resourceId: guardianId, after: { ...dto } });
     return { guardianId };
   }
 

@@ -56,6 +56,13 @@ export interface IPaymentAdapter {
   readonly channel: 'mobile_money' | 'bank' | 'gepg' | 'cash';
   readonly provider: string;
 
+  /**
+   * MUST be called before handleWebhook. Verifies the provider's webhook
+   * signature against the raw body. Returning false rejects the callback
+   * with 401 — never process an unverified webhook.
+   */
+  verifyWebhook(payload: WebhookPayload): boolean;
+
   createCharge(req: ChargeRequest): Promise<ChargeResult>;
   statusCheck(providerRef: string): Promise<ChargeResult>;
   handleWebhook(payload: WebhookPayload): Promise<WebhookResult>;

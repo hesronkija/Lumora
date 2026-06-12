@@ -67,7 +67,7 @@ export class BeemAdapter {
 
       return {
         success: true,
-        providerMessageId: data.message_id,
+        ...(data.message_id ? { providerMessageId: data.message_id } : {}),
         costTzs: 25, // ~TZS 25 per SMS; will be reconciled with Beem billing
       };
     } catch (err) {
