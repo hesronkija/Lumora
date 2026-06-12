@@ -2,9 +2,10 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Sidebar } from './sidebar';
 import { TopBar } from './topbar';
+import { CommandPalette } from '@/components/command-palette';
 import { DEMO } from '@/lib/config';
 
 const DEMO_SESSION = {
@@ -60,13 +61,27 @@ function Shell({ children, roles, schoolName, userName, onSignOut }: {
   children: React.ReactNode; roles: string[]; schoolName: string;
   userName: string; onSignOut: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar roles={roles} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar schoolName={schoolName} userName={userName} onSignOut={onSignOut} />
-        <main className="flex-1 overflow-y-auto bg-muted/20 p-6">{children}</main>
+      {/* Desktop sidebar */}
+      <div className="hidden lg:block">
+        <Sidebar roles={roles} />
       </div>
+      {/* Mobile drawer */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setMenuOpen(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-y-0 left-0" onClick={(e) => e.stopPropagation()}>
+            <Sidebar roles={roles} onNavigate={() => setMenuOpen(false)} />
+          </div>
+        </div>
+      )}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <TopBar schoolName={schoolName} userName={userName} onSignOut={onSignOut} onMenuToggle={() => setMenuOpen(true)} />
+        <main className="flex-1 overflow-y-auto bg-muted/20 p-4 sm:p-6">{children}</main>
+      </div>
+      <CommandPalette />
     </div>
   );
 }

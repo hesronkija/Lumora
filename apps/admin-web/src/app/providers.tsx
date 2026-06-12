@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider } from 'next-auth/react';
 import { useState } from 'react';
 import { LanguageProvider } from '@/lib/i18n';
+import { PreferencesProvider } from '@/lib/preferences';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -21,7 +22,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
-        <LanguageProvider>{children}</LanguageProvider>
+        <PreferencesProvider>
+          <LanguageProvider>{children}</LanguageProvider>
+        </PreferencesProvider>
       </QueryClientProvider>
     </SessionProvider>
   );

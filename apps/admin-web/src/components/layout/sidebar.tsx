@@ -19,6 +19,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', key: 'dashboard', icon: LayoutDashboard, roles: ['*'] },
+  { href: '/users', key: 'users', icon: Users, roles: ['owner', 'headteacher', 'hr'] },
   { href: '/admissions', key: 'admissions', icon: GraduationCap, roles: ['owner', 'headteacher', 'hr'] },
   { href: '/students', key: 'students', icon: Users, roles: ['owner', 'headteacher', 'teacher'] },
   { href: '/academic', key: 'academic', icon: BookOpen, roles: ['owner', 'headteacher', 'teacher'] },
@@ -37,7 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/settings', key: 'settings', icon: Settings, roles: ['owner'] },
 ];
 
-export function Sidebar({ roles }: { roles: string[] }) {
+export function Sidebar({ roles, onNavigate }: { roles: string[]; onNavigate?: () => void }) {
   const pathname = usePathname();
   const { t } = useI18n();
 
@@ -61,6 +62,7 @@ export function Sidebar({ roles }: { roles: string[] }) {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={() => onNavigate?.()}
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
                     isActive
