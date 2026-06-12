@@ -3,63 +3,57 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useI18n, type TKey } from '@/lib/i18n';
 import {
-  LayoutDashboard,
-  Users,
-  GraduationCap,
-  BookOpen,
-  DollarSign,
-  CreditCard,
-  BookMarked,
-  UserCheck,
-  Home,
-  Truck,
-  BarChart3,
-  Settings,
+  LayoutDashboard, Users, GraduationCap, BookOpen, DollarSign, CreditCard,
+  BookMarked, UserCheck, Home, Truck, BarChart3, Settings, Briefcase,
+  ClipboardList, MessageSquare, Sparkles,
 } from 'lucide-react';
 
 interface NavItem {
   href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  key: TKey;
+  icon: import('lucide-react').LucideIcon;
   roles: string[];
-  phase: number;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['*'], phase: 0 },
-  { href: '/users', label: 'Users & Roles', icon: Users, roles: ['owner', 'headteacher', 'hr'], phase: 0 },
-  { href: '/admissions', label: 'Admissions', icon: GraduationCap, roles: ['owner', 'headteacher', 'hr'], phase: 1 },
-  { href: '/students', label: 'Students', icon: Users, roles: ['owner', 'headteacher', 'teacher'], phase: 1 },
-  { href: '/academic', label: 'Academic', icon: BookOpen, roles: ['owner', 'headteacher', 'teacher'], phase: 1 },
-  { href: '/attendance', label: 'Attendance', icon: UserCheck, roles: ['teacher', 'class_teacher', 'headteacher'], phase: 1 },
-  { href: '/fees', label: 'Fees & Billing', icon: DollarSign, roles: ['bursar', 'owner', 'headteacher'], phase: 2 },
-  { href: '/payments', label: 'Payments', icon: CreditCard, roles: ['bursar', 'owner'], phase: 2 },
-  { href: '/accounting', label: 'Accounting', icon: BookMarked, roles: ['bursar', 'accountant', 'owner'], phase: 3 },
-  { href: '/payroll', label: 'Payroll', icon: DollarSign, roles: ['hr', 'bursar', 'owner'], phase: 3 },
-  { href: '/boarding', label: 'Boarding', icon: Home, roles: ['matron', 'headteacher', 'owner'], phase: 4 },
-  { href: '/transport', label: 'Transport & Meals', icon: Truck, roles: ['driver', 'headteacher', 'owner'], phase: 4 },
-  { href: '/reports', label: 'Reports', icon: BarChart3, roles: ['owner', 'headteacher', 'bursar', 'auditor'], phase: 0 },
-  { href: '/settings', label: 'Settings', icon: Settings, roles: ['owner'], phase: 0 },
+  { href: '/dashboard', key: 'dashboard', icon: LayoutDashboard, roles: ['*'] },
+  { href: '/admissions', key: 'admissions', icon: GraduationCap, roles: ['owner', 'headteacher', 'hr'] },
+  { href: '/students', key: 'students', icon: Users, roles: ['owner', 'headteacher', 'teacher'] },
+  { href: '/academic', key: 'academic', icon: BookOpen, roles: ['owner', 'headteacher', 'teacher'] },
+  { href: '/attendance', key: 'attendance', icon: UserCheck, roles: ['teacher', 'class_teacher', 'headteacher', 'owner'] },
+  { href: '/exams', key: 'exams', icon: ClipboardList, roles: ['teacher', 'headteacher', 'owner'] },
+  { href: '/fees', key: 'fees', icon: DollarSign, roles: ['bursar', 'owner', 'headteacher'] },
+  { href: '/payments', key: 'payments', icon: CreditCard, roles: ['bursar', 'owner'] },
+  { href: '/accounting', key: 'accounting', icon: BookMarked, roles: ['bursar', 'accountant', 'owner'] },
+  { href: '/hr', key: 'hr', icon: Briefcase, roles: ['hr', 'headteacher', 'owner'] },
+  { href: '/payroll', key: 'payroll', icon: DollarSign, roles: ['hr', 'bursar', 'owner'] },
+  { href: '/boarding', key: 'boarding', icon: Home, roles: ['matron', 'headteacher', 'owner'] },
+  { href: '/transport', key: 'transport', icon: Truck, roles: ['driver', 'headteacher', 'owner'] },
+  { href: '/comms', key: 'comms', icon: MessageSquare, roles: ['headteacher', 'owner'] },
+  { href: '/reports', key: 'reports', icon: BarChart3, roles: ['owner', 'headteacher', 'bursar', 'auditor'] },
+  { href: '/ai', key: 'ai', icon: Sparkles, roles: ['owner', 'headteacher', 'teacher'] },
+  { href: '/settings', key: 'settings', icon: Settings, roles: ['owner'] },
 ];
 
 export function Sidebar({ roles }: { roles: string[] }) {
   const pathname = usePathname();
+  const { t } = useI18n();
 
   const visibleItems = NAV_ITEMS.filter(
-    (item) =>
-      item.roles.includes('*') ||
-      item.roles.some((r) => roles.includes(r)),
+    (item) => item.roles.includes('*') || item.roles.some((r) => roles.includes(r)),
   );
 
   return (
-    <aside className="flex w-64 flex-col border-r bg-card">
-      <div className="flex h-16 items-center px-6 border-b">
-        <span className="text-lg font-bold text-primary">Lumora</span>
+    <aside className="flex w-60 flex-col border-r bg-card">
+      <div className="flex h-16 items-center gap-2 border-b px-6">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">L</span>
+        <span className="text-lg font-bold tracking-tight">Lumora</span>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <ul className="space-y-1">
+        <ul className="space-y-0.5">
           {visibleItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
@@ -68,23 +62,24 @@ export function Sidebar({ roles }: { roles: string[] }) {
                 <Link
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
                     isActive
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-primary font-medium text-primary-foreground'
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {item.label}
-                  {item.phase > 0 && !isActive && (
-                    <span className="ml-auto text-xs opacity-40">P{item.phase}</span>
-                  )}
+                  {t(item.key)}
                 </Link>
               </li>
             );
           })}
         </ul>
       </nav>
+
+      <div className="border-t px-5 py-3 text-[11px] text-muted-foreground">
+        Lumora · Shule Bora Tanzania
+      </div>
     </aside>
   );
 }
