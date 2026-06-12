@@ -72,17 +72,41 @@ describe('webhook signature verification', () => {
     }
   });
 
-  it('allows unverified in dev when no secret is configured (stub mode)', () => {
+  it('FAILS CLOSED when NODE_ENV is unset and no secret is configured', () => {
     const prev = process.env['NODE_ENV'];
-    process.env['NODE_ENV'] = 'development';
+    delete process.env['NODE_ENV'];
     try {
       const ok = verifyHmacWebhook(
         { rawBody, headers: {} },
         { header: 'x-bank-signature', secret: undefined },
       );
-      expect(ok).toBe(true);
+      expect(ok).toBe(false);
     } finally {
       process.env['NODE_ENV'] = prev;
     }
+  });
+
+  it('allows unverified in dev ONLY with the explicit opt-in flag', () => {
+    const prevEnv = process.env['NODE_ENV'];
+    const prevFlag = process.env['ALLOW_UNSIGNED_WEBHOOKS'];
+    process.env['NODE_ENV'] = 'development';
+    try {
+      process.env['ALLOW_UNSIGNED_WEBHOOKS'] = 'false';
+      expect(verifyHmacWebhook({ rawBody, headers: {} }, { header: 'x-bank-signature', secret: undefined })).toBe(false);
+      process.env['ALLOW_UNSIGNED_WEBHOOKS'] = 'true';
+      expect(verifyHmacWebhook({ rawBody, headers: {} }, { header: 'x-bank-signature', secret: undefined })).toBe(true);
+    } finally {
+      process.env['NODE_ENV'] = prevEnv;
+      if (prevFlag === undefined) delete process.env['ALLOW_UNSIGNED_WEBHOOKS'];
+      else process.env['ALLOW_UNSIGNED_WEBHOOKS'] = prevFlag;
+    }
+  });
+
+  it('tolerates a "sha256=" scheme prefix on the signature header', () => {
+    const ok = verifyHmacWebhook(
+      { rawBody, headers: { 'x-bank-signature': `sha256=${sign(rawBody)}` } },
+      { header: 'x-bank-signature', secret: SECRET },
+    );
+    expect(ok).toBe(true);
   });
 });

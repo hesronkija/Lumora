@@ -19,10 +19,14 @@ function selcomSigned(body: Record<string, unknown>) {
 describe('payment webhook pipeline', () => {
   let dbRows: Record<string, unknown[]>;
   const mkPool = () => ({
-    query: jest.fn(async (sql: string, params?: unknown[]) => {
+    query: jest.fn(async (sql: string, _params?: unknown[]) => {
       if (sql.includes('FROM invoice')) return { rows: dbRows['invoice'] ?? [], rowCount: (dbRows['invoice'] ?? []).length };
       if (sql.includes('SELECT * FROM payment WHERE provider_ref')) return { rows: dbRows['payment'] ?? [], rowCount: (dbRows['payment'] ?? []).length };
       if (sql.includes('INSERT INTO payment')) return { rows: [{ id: 'pay-new' }], rowCount: 1 };
+      // Conditional completion: succeeds (1 row) unless the test marks the
+      // row already-completed via dbRows.updateMiss.
+      if (sql.includes("SET status = 'completed'")) return { rows: [], rowCount: (dbRows['updateMiss']?.length ? 0 : 1) };
+      if (sql.includes("SET status = 'amount_mismatch'")) return { rows: [], rowCount: 1 };
       if (sql.includes('SELECT vrn FROM tenant')) return { rows: [{ vrn: null }], rowCount: 1 };
       return { rows: [], rowCount: 0 };
     }),
@@ -36,7 +40,7 @@ describe('payment webhook pipeline', () => {
   beforeEach(() => {
     process.env['SELCOM_API_SECRET'] = SECRET;
     dbRows = {
-      invoice: [{ id: 'inv-1', tenant_id: TENANT, invoice_no: 'INV/2026/00001', control_no: '482100000017' }],
+      invoice: [{ id: 'inv-1', tenant_id: TENANT, invoice_no: 'INV/2026/00001', control_no: '482100000017', total_due: '460000', total_paid: '0' }],
       payment: [],
     };
     pool = mkPool();
@@ -98,5 +102,40 @@ describe('payment webhook pipeline', () => {
 
   it('rejects webhooks for unknown providers', async () => {
     await expect(svc.handleWebhook('paypal', { rawBody: '{}', headers: {} })).rejects.toThrow(/Unknown provider/);
+  });
+
+  it('QUARANTINES a callback whose amount disagrees with the pending payment', async () => {
+    // A payment was initiated expecting 460,000 but the callback reports 50,000.
+    dbRows['payment'] = [{ id: 'pay-1', status: 'pending', amount: '460000.0000' }];
+    const res = await svc.handleWebhook('selcom', selcomSigned({ ...happyBody, amount: '50000' }));
+    expect(res).toMatchObject({ reason: 'amount_mismatch', expected: '460000.00', reported: '50000.00' });
+    expect(fees.updatePaymentBalance).not.toHaveBeenCalled();
+    expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({ action: 'payment.amount_mismatch' }));
+  });
+
+  it('completes a matching pending payment and credits the agreed amount', async () => {
+    dbRows['payment'] = [{ id: 'pay-1', status: 'pending', amount: '150000.0000' }];
+    const res = await svc.handleWebhook('selcom', selcomSigned({ ...happyBody, amount: '150000' }));
+    expect(res).toMatchObject({ processed: true, paymentId: 'pay-1' });
+    expect(fees.updatePaymentBalance).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats a lost completion race as a replay (no double credit)', async () => {
+    // Row is pending at read time but the conditional UPDATE matches 0 rows
+    // (a concurrent delivery already completed it).
+    dbRows['payment'] = [{ id: 'pay-1', status: 'pending', amount: '150000.0000' }];
+    dbRows['updateMiss'] = [{}];
+    const res = await svc.handleWebhook('selcom', selcomSigned({ ...happyBody, amount: '150000' }));
+    expect(res).toMatchObject({ processed: true, replay: true });
+    expect(fees.updatePaymentBalance).not.toHaveBeenCalled();
+  });
+
+  it('never credits more than the invoice outstanding balance (direct payment)', async () => {
+    // No pending payment; callback over-reports. Outstanding is 460,000.
+    dbRows['invoice'] = [{ id: 'inv-1', tenant_id: TENANT, invoice_no: 'INV/2026/00001', control_no: '482100000017', total_due: '460000', total_paid: '300000' }];
+    await svc.handleWebhook('selcom', selcomSigned({ ...happyBody, amount: '999999' }));
+    // outstanding = 460000 - 300000 = 160000 → credit capped at 160000
+    const credited = (fees.updatePaymentBalance as jest.Mock).mock.calls[0][1];
+    expect(credited.toFixed(2)).toBe('160000.00');
   });
 });

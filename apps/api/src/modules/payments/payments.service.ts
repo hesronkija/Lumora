@@ -100,17 +100,18 @@ export class PaymentsService {
       callbackUrl,
     });
 
+    const { userId } = TenantStorage.get();
     const { rows } = await this.pool.query(
       `INSERT INTO payment
-        (id, tenant_id, invoice_id, amount, channel, provider, provider_ref, idempotency_key, status, payer_phone, payer_name)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        (id, tenant_id, invoice_id, amount, channel, provider, provider_ref, idempotency_key, status, payer_phone, payer_name, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING *`,
       [
         uuidv4(), tenantId, dto.invoiceId,
         amount.toFixed(4), dto.channel, adapter.provider,
         chargeResult.providerRef ?? null, dto.idempotencyKey,
         chargeResult.success ? 'pending' : 'failed',
-        dto.payerPhone ?? null, dto.payerName ?? null,
+        dto.payerPhone ?? null, dto.payerName ?? null, userId,
       ],
     );
 
@@ -158,16 +159,49 @@ export class PaymentsService {
         return { processed: true, paymentId: paymentRows[0].id as string, replay: true };
       }
 
+      const webhookAmount = new Decimal(result.amount);
+
       let paymentId: string;
+      let creditAmount: Decimal;
       if (paymentRows[0]) {
-        // Update existing pending payment
-        await this.pool.query(
-          `UPDATE payment SET status = 'completed', paid_at = $1, updated_at = NOW() WHERE id = $2`,
+        // AMOUNT INTEGRITY: a pending payment was already initiated for an
+        // expected amount. If the provider reports a different amount, do not
+        // silently accept it — flag for the bursar instead of crediting a
+        // wrong figure (TZS 1 tolerance for rounding).
+        const expected = new Decimal(paymentRows[0].amount as string);
+        if (expected.minus(webhookAmount).abs().greaterThan(1)) {
+          await this.pool.query(
+            `UPDATE payment SET status = 'amount_mismatch', updated_at = NOW()
+             WHERE id = $1 AND status = 'pending'`,
+            [paymentRows[0].id],
+          );
+          await this.audit.log({
+            action: 'payment.amount_mismatch',
+            resource: 'payment',
+            resourceId: paymentRows[0].id as string,
+            after: { expected: expected.toFixed(2), reported: webhookAmount.toFixed(2), providerRef: result.providerRef },
+          });
+          return { processed: false, reason: 'amount_mismatch', expected: expected.toFixed(2), reported: webhookAmount.toFixed(2) };
+        }
+        // ATOMIC TRANSITION: only the row still in 'pending' is completed, so
+        // two concurrent deliveries cannot both credit the invoice.
+        const upd = await this.pool.query(
+          `UPDATE payment SET status = 'completed', paid_at = $1, updated_at = NOW()
+           WHERE id = $2 AND status = 'pending'`,
           [result.paidAt, paymentRows[0].id],
         );
+        if (upd.rowCount === 0) {
+          // Lost the race to a concurrent delivery — already completed.
+          return { processed: true, paymentId: paymentRows[0].id as string, replay: true };
+        }
         paymentId = paymentRows[0].id as string;
+        creditAmount = expected; // credit the agreed amount, not the wire value
       } else {
-        // Webhook arrived without a preceding initiate (e.g. direct bank payment)
+        // Webhook arrived without a preceding initiate (e.g. direct bank payment).
+        // There is no pre-agreed amount, so the provider-signed amount stands,
+        // but it must not exceed the invoice's outstanding balance.
+        const outstanding = new Decimal(invoice.total_due as string).minus(invoice.total_paid as string);
+        creditAmount = Decimal.min(webhookAmount, Decimal.max(outstanding, new Decimal(0)));
         const { rows } = await this.pool.query(
           `INSERT INTO payment
             (id, tenant_id, invoice_id, amount, channel, provider, provider_ref, idempotency_key, status, payer_phone, payer_name, paid_at)
@@ -176,7 +210,7 @@ export class PaymentsService {
            RETURNING id`,
           [
             uuidv4(), invoice.tenant_id, invoice.id,
-            result.amount.toFixed(4), adapter.channel, adapter.provider,
+            creditAmount.toFixed(4), adapter.channel, adapter.provider,
             result.providerRef, `wh-${result.providerRef}`,
             result.payerPhone ?? null, result.payerName ?? null, result.paidAt,
           ],
@@ -188,16 +222,16 @@ export class PaymentsService {
         paymentId = rows[0].id as string;
       }
 
-      await this.feesService.updatePaymentBalance(invoice.id as string, new Decimal(result.amount));
+      await this.feesService.updatePaymentBalance(invoice.id as string, creditAmount);
 
       // Issue TRA fiscal receipt for VRN schools (best-effort, non-blocking)
-      this.issueFiscalReceiptIfRequired(invoice, result.amount, paymentId, adapter.channel).catch(() => null);
+      this.issueFiscalReceiptIfRequired(invoice, creditAmount.toNumber(), paymentId, adapter.channel).catch(() => null);
 
       await this.audit.log({
         action: 'payment.completed',
         resource: 'payment',
         resourceId: paymentId,
-        after: { providerRef: result.providerRef, amount: result.amount, paidAt: result.paidAt },
+        after: { providerRef: result.providerRef, amount: creditAmount.toFixed(2), paidAt: result.paidAt },
       });
 
       return { processed: true, paymentId };
@@ -243,12 +277,21 @@ export class PaymentsService {
     if (!payment) throw new NotFoundException('Cash payment not found');
     if (payment.dual_control_confirmed) throw new ConflictException('Already confirmed');
 
-    await this.pool.query(
+    // DUAL CONTROL: the confirmer must be a different person from whoever
+    // recorded the cash, otherwise it isn't dual control at all.
+    if (payment.created_by && payment.created_by === dto.confirmedByUserId) {
+      throw new ConflictException('Cash must be confirmed by a different user (dual control)');
+    }
+
+    // ATOMIC: only confirm the row still unconfirmed, so two simultaneous
+    // confirmations cannot both credit the invoice.
+    const upd = await this.pool.query(
       `UPDATE payment
        SET dual_control_confirmed = true, confirmed_by = $1, status = 'completed', paid_at = NOW(), updated_at = NOW()
-       WHERE id = $2`,
+       WHERE id = $2 AND dual_control_confirmed = false`,
       [dto.confirmedByUserId, dto.paymentId],
     );
+    if (upd.rowCount === 0) throw new ConflictException('Already confirmed');
 
     await this.feesService.updatePaymentBalance(
       payment.invoice_id as string,
@@ -308,8 +351,10 @@ export class PaymentsService {
 
     const result = await adapter.statusCheck(payment.provider_ref as string);
     if (result.success && payment.status === 'pending') {
+      // Conditional on still-pending so this can't race the webhook into a
+      // double completion.
       await this.pool.query(
-        `UPDATE payment SET status = 'completed', paid_at = NOW() WHERE id = $1`,
+        `UPDATE payment SET status = 'completed', paid_at = NOW() WHERE id = $1 AND status = 'pending'`,
         [paymentId],
       );
       return { ...payment, status: 'completed' };

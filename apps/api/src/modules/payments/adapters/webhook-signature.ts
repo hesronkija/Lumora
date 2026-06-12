@@ -30,22 +30,38 @@ export function verifyHmacWebhook(payload: WebhookPayload, opts: HmacVerifyOptio
   const { header, secret, encoding = 'hex' } = opts;
 
   if (!secret) {
-    if (process.env['NODE_ENV'] === 'production') {
-      logger.error(`Webhook secret for header '${header}' is not configured — rejecting.`);
-      return false;
+    // Fail CLOSED by default. Unsigned acceptance is only allowed when BOTH a
+    // recognised dev/test NODE_ENV is set AND an explicit opt-in flag is on —
+    // so a missing/blank NODE_ENV in a misconfigured container never accepts
+    // forged callbacks.
+    const env = process.env['NODE_ENV'];
+    const isDevEnv = env === 'development' || env === 'test';
+    const optIn = process.env['ALLOW_UNSIGNED_WEBHOOKS'] === 'true';
+    if (isDevEnv && optIn) {
+      logger.warn(`Webhook secret for '${header}' not set — accepting unverified (dev opt-in).`);
+      return true;
     }
-    logger.warn(`Webhook secret for '${header}' not configured — accepting unverified (dev only).`);
-    return true;
+    logger.error(`Webhook secret for header '${header}' is not configured — rejecting.`);
+    return false;
   }
 
-  const provided = payload.headers[header] ?? payload.headers[header.toLowerCase()];
-  if (!provided) return false;
+  // Strip a known "scheme=" prefix (e.g. "sha256=…"). Restricted to known
+  // schemes so we never strip base64 padding ('='), which is significant.
+  const rawProvided = payload.headers[header] ?? payload.headers[header.toLowerCase()];
+  if (!rawProvided) return false;
+  const provided = rawProvided.replace(/^(sha256|sha1|hmac-sha256|hmac)=/i, '').trim();
 
   const message = opts.message ? opts.message(payload) : payload.rawBody;
-  const expected = crypto.createHmac('sha256', secret).update(message).digest(encoding);
-
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
+  // Compare decoded digest BYTES, not ASCII strings, so hex/base64 casing or
+  // representation differences can't cause a spurious mismatch.
+  let a: Buffer;
+  let b: Buffer;
+  try {
+    a = Buffer.from(provided, encoding);
+    b = crypto.createHmac('sha256', secret).update(message).digest();
+  } catch {
+    return false;
+  }
+  if (a.length === 0 || a.length !== b.length) return false;
   return crypto.timingSafeEqual(a, b);
 }

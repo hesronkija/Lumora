@@ -52,10 +52,15 @@ function patchReleaseWithReset(client: PoolClient, gucNames: string[]): PoolClie
       originalRelease(err);
       return;
     }
+    // RESET the session GUCs before returning the connection to the pool. If
+    // the RESET itself fails, the connection may still carry this tenant's
+    // GUC — so we DESTROY it (release with an error) rather than hand a
+    // contaminated connection to the next borrower. Failing safe beats
+    // leaking tenant context across the pool.
     client
       .query(gucNames.map((g) => `RESET ${g}`).join('; '))
-      .catch(() => undefined)
-      .then(() => originalRelease());
+      .then(() => originalRelease())
+      .catch((resetErr: Error) => originalRelease(resetErr));
   };
   return client;
 }
