@@ -18,6 +18,8 @@ import { PayrollModule } from './modules/payroll/payroll.module';
 import { BoardingModule } from './modules/boarding/boarding.module';
 import { TransportMealsModule } from './modules/transport-meals/transport-meals.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
+import { HrModule } from './modules/hr/hr.module';
+import { AiModule } from './modules/ai/ai.module';
 import { TenantResolverMiddleware } from './common/middleware/tenant-resolver.middleware';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 
@@ -42,12 +44,14 @@ import { RequestLoggerMiddleware } from './common/middleware/request-logger.midd
     PaymentsModule,
     // Phase 3
     AccountingModule,
+    HrModule,
     PayrollModule,
     // Phase 4
     BoardingModule,
     TransportMealsModule,
     // Phase 5
     ReportingModule,
+    AiModule,
   ],
 })
 export class AppModule implements NestModule {

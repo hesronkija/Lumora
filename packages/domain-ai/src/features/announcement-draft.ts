@@ -16,7 +16,7 @@ export interface AnnouncementDraftRequest {
   tenantName: string;
   intent: string; // Free-text from headteacher: "remind parents fees are due Friday"
   channel: 'sms' | 'whatsapp' | 'email';
-  locale: 'en-TZ'; // Swahili ('sw-TZ') added in Phase 5
+  locale: 'en-TZ' | 'sw-TZ';
   maxLength?: number; // SMS: 160 chars; WhatsApp: 1600
 }
 
