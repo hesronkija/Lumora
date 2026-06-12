@@ -7,7 +7,8 @@ import { useI18n, type TKey } from '@/lib/i18n';
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen, DollarSign, CreditCard,
   BookMarked, UserCheck, Home, Truck, BarChart3, Settings, Briefcase,
-  ClipboardList, MessageSquare, Sparkles,
+  ClipboardList, MessageSquare, Sparkles, Sun, CalendarRange, BadgeCheck,
+  HeartHandshake,
 } from 'lucide-react';
 
 interface NavItem {
@@ -19,13 +20,16 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', key: 'dashboard', icon: LayoutDashboard, roles: ['*'] },
+  { href: '/pulse', key: 'pulse', icon: Sun, roles: ['owner', 'headteacher', 'bursar'] },
   { href: '/users', key: 'users', icon: Users, roles: ['owner', 'headteacher', 'hr'] },
   { href: '/admissions', key: 'admissions', icon: GraduationCap, roles: ['owner', 'headteacher', 'hr'] },
   { href: '/students', key: 'students', icon: Users, roles: ['owner', 'headteacher', 'teacher'] },
   { href: '/academic', key: 'academic', icon: BookOpen, roles: ['owner', 'headteacher', 'teacher'] },
   { href: '/attendance', key: 'attendance', icon: UserCheck, roles: ['teacher', 'class_teacher', 'headteacher', 'owner'] },
+  { href: '/timetable', key: 'timetable', icon: CalendarRange, roles: ['teacher', 'headteacher', 'owner'] },
   { href: '/exams', key: 'exams', icon: ClipboardList, roles: ['teacher', 'headteacher', 'owner'] },
   { href: '/fees', key: 'fees', icon: DollarSign, roles: ['bursar', 'owner', 'headteacher'] },
+  { href: '/harambee', key: 'harambee', icon: HeartHandshake, roles: ['bursar', 'owner', 'headteacher'] },
   { href: '/payments', key: 'payments', icon: CreditCard, roles: ['bursar', 'owner'] },
   { href: '/accounting', key: 'accounting', icon: BookMarked, roles: ['bursar', 'accountant', 'owner'] },
   { href: '/hr', key: 'hr', icon: Briefcase, roles: ['hr', 'headteacher', 'owner'] },
@@ -33,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/boarding', key: 'boarding', icon: Home, roles: ['matron', 'headteacher', 'owner'] },
   { href: '/transport', key: 'transport', icon: Truck, roles: ['driver', 'headteacher', 'owner'] },
   { href: '/comms', key: 'comms', icon: MessageSquare, roles: ['headteacher', 'owner'] },
+  { href: '/id-cards', key: 'idcards', icon: BadgeCheck, roles: ['owner', 'headteacher', 'hr'] },
   { href: '/reports', key: 'reports', icon: BarChart3, roles: ['owner', 'headteacher', 'bursar', 'auditor'] },
   { href: '/ai', key: 'ai', icon: Sparkles, roles: ['owner', 'headteacher', 'teacher'] },
   { href: '/settings', key: 'settings', icon: Settings, roles: ['owner'] },

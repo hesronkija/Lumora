@@ -55,7 +55,11 @@ export default function StudentProfilePage() {
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <CardHeader title="End of Term 1 — subject results" subtitle={`Average ${student.average}% · Position ${student.position}/${student.classSize}`} />
+            <CardHeader
+              title="End of Term 1 — subject results"
+              subtitle={`Average ${student.average}% · Position ${student.position}/${student.classSize}`}
+              action={<Link href={`/students/${student.id}/report-card`} className="text-xs font-medium text-primary hover:underline">Print report card →</Link>}
+            />
             <div className="space-y-3 p-5">
               {subjectScores.map((s) => (
                 <div key={s.subject}>

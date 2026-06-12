@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lumora — Shule Bora · School Management for Tanzania</title>
+<meta name="description" content="Fees with M-Pesa & bank collection, statutory payroll, report cards, AI that works offline — in English and Kiswahili. Built for Tanzanian schools." />
+<style>
+  :root {
+    --blue: #1a56db; --blue-dark: #12368f; --ink: #0c1222; --muted: #5b6478;
+    --bg: #f7f9fd; --card: #ffffff; --green: #0e9f6e; --amber: #c27803;
+    --radius: 18px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.6; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* Nav */
+  nav { position: sticky; top: 0; z-index: 50; background: rgba(247,249,253,.85); backdrop-filter: blur(12px); border-bottom: 1px solid #e6eaf2; }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: -.02em; }
+  .logo-mark { width: 32px; height: 32px; border-radius: 9px; background: var(--blue); color: #fff; display: grid; place-items: center; font-size: 17px; }
+  .nav-links { display: flex; gap: 26px; align-items: center; font-size: 14px; }
+  .nav-links a { color: var(--muted); text-decoration: none; font-weight: 500; }
+  .nav-links a:hover { color: var(--ink); }
+  .btn { display: inline-block; padding: 11px 22px; border-radius: 12px; font-weight: 600; font-size: 14px; text-decoration: none; transition: transform .15s, box-shadow .15s; cursor: pointer; border: none; }
+  .btn-primary { background: var(--blue); color: #fff; box-shadow: 0 8px 20px -8px rgba(26,86,219,.55); }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 26px -8px rgba(26,86,219,.6); }
+  .btn-ghost { background: #fff; color: var(--ink); border: 1px solid #dfe5f0; }
+  .lang-toggle { background: #fff; border: 1px solid #dfe5f0; border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; color: var(--blue); }
+
+  /* Hero */
+  .hero { padding: 84px 0 64px; text-align: center; position: relative; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; inset: -40% -20% auto; height: 130%; background:
+    radial-gradient(600px 300px at 30% 20%, rgba(26,86,219,.14), transparent),
+    radial-gradient(500px 280px at 75% 10%, rgba(14,159,110,.12), transparent); z-index: -1; }
+  .eyebrow { display: inline-flex; gap: 8px; align-items: center; background: #fff; border: 1px solid #e3e9f5; padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--blue); box-shadow: 0 4px 14px -6px rgba(12,18,34,.12); }
+  h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.08; letter-spacing: -.03em; font-weight: 850; margin: 22px auto 18px; max-width: 820px; }
+  h1 .grad { background: linear-gradient(95deg, var(--blue), var(--green)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { font-size: 18px; color: var(--muted); max-width: 640px; margin: 0 auto 30px; }
+  .hero-ctas { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .hero-note { margin-top: 14px; font-size: 13px; color: var(--muted); }
+
+  /* Stats strip */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 56px 0 0; }
+  .stat { background: var(--card); border: 1px solid #e6eaf2; border-radius: var(--radius); padding: 20px; text-align: center; }
+  .stat b { display: block; font-size: 26px; letter-spacing: -.02em; }
+  .stat span { font-size: 12.5px; color: var(--muted); }
+
+  /* Sections */
+  section { padding: 72px 0; }
+  .sec-head { text-align: center; max-width: 640px; margin: 0 auto 44px; }
+  .sec-head h2 { font-size: clamp(26px, 4vw, 38px); letter-spacing: -.025em; font-weight: 800; margin-bottom: 10px; }
+  .sec-head p { color: var(--muted); font-size: 16px; }
+  .kicker { font-size: 12.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--blue); display: block; margin-bottom: 10px; }
+
+  .grid { display: grid; gap: 18px; }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card { background: var(--card); border: 1px solid #e6eaf2; border-radius: var(--radius); padding: 26px; transition: transform .18s, box-shadow .18s; }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 18px 40px -18px rgba(12,18,34,.18); }
+  .card .ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; margin-bottom: 14px; }
+  .card h3 { font-size: 17px; margin-bottom: 7px; letter-spacing: -.01em; }
+  .card p { font-size: 14px; color: var(--muted); }
+  .b-blue { background: #e8effd; } .b-green { background: #e3f6ef; } .b-amber { background: #fdf0dd; }
+  .b-rose { background: #fdeaee; } .b-violet { background: #efe9fd; } .b-cyan { background: #e2f6f9; }
+
+  /* Pulse showcase */
+  .pulse-band { background: linear-gradient(135deg, var(--blue-dark), var(--blue)); color: #fff; border-radius: 28px; padding: 54px 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
+  .pulse-band h2 { font-size: clamp(24px, 3.4vw, 34px); letter-spacing: -.02em; margin-bottom: 14px; }
+  .pulse-band p { color: rgba(255,255,255,.82); font-size: 15px; }
+  .phone { background: #0c1222; border-radius: 26px; padding: 14px; max-width: 330px; margin-left: auto; box-shadow: 0 30px 60px -20px rgba(0,0,0,.5); }
+  .sms { background: #1b2436; border-radius: 16px; padding: 16px; font-size: 13.5px; line-height: 1.55; color: #dbe4f5; }
+  .sms b { color: #8db4ff; }
+  .pulse-list { margin-top: 18px; display: grid; gap: 10px; }
+  .pulse-list li { list-style: none; display: flex; gap: 10px; font-size: 14px; color: rgba(255,255,255,.92); }
+  .pulse-list li::before { content: '✓'; color: #6ee7b7; font-weight: 800; }
+
+  /* Comparison */
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: var(--radius); overflow: hidden; box-shadow: 0 10px 30px -18px rgba(12,18,34,.16); }
+  th, td { padding: 14px 18px; text-align: left; font-size: 14px; border-bottom: 1px solid #eef1f7; }
+  thead th { background: var(--ink); color: #fff; font-size: 13px; }
+  thead th:nth-child(2) { background: var(--blue); }
+  td:nth-child(2) { background: #f3f7ff; font-weight: 600; }
+  .yes { color: var(--green); font-weight: 700; } .no { color: #c2c9d8; } .part { color: var(--amber); font-weight: 600; }
+
+  /* Pricing */
+  .price-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; align-items: stretch; }
+  .price { background: #fff; border: 1px solid #e6eaf2; border-radius: 22px; padding: 30px; position: relative; display: flex; flex-direction: column; }
+  .price.popular { border: 2px solid var(--blue); box-shadow: 0 24px 50px -20px rgba(26,86,219,.35); }
+  .pop-badge { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: var(--blue); color: #fff; font-size: 11.5px; font-weight: 700; padding: 4px 14px; border-radius: 999px; }
+  .price h3 { font-size: 18px; } .price .amount { font-size: 36px; font-weight: 850; letter-spacing: -.03em; margin: 12px 0 2px; }
+  .price .per { font-size: 12.5px; color: var(--muted); margin-bottom: 18px; }
+  .price ul { list-style: none; display: grid; gap: 9px; font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+  .price li::before { content: '✓ '; color: var(--green); font-weight: 700; }
+  .price .btn { margin-top: auto; text-align: center; }
+
+  /* FAQ */
+  details { background: #fff; border: 1px solid #e6eaf2; border-radius: 14px; padding: 18px 22px; margin-bottom: 12px; }
+  summary { font-weight: 650; cursor: pointer; font-size: 15px; }
+  details p { margin-top: 10px; color: var(--muted); font-size: 14px; }
+
+  footer { border-top: 1px solid #e6eaf2; padding: 40px 0 60px; text-align: center; color: var(--muted); font-size: 13.5px; }
+  footer .logo { justify-content: center; margin-bottom: 10px; }
+
+  @media (max-width: 760px) {
+    .nav-links { display: none; }
+    .pulse-band { grid-template-columns: 1fr; padding: 36px 24px; }
+    .phone { margin: 0 auto; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-inner">
+    <div class="logo"><span class="logo-mark">L</span> Lumora</div>
+    <div class="nav-links">
+      <a href="#features" data-i18n="nav_features">Features</a>
+      <a href="#pulse" data-i18n="nav_pulse">Shule Pulse</a>
+      <a href="#compare" data-i18n="nav_compare">Compare</a>
+      <a href="#pricing" data-i18n="nav_pricing">Pricing</a>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center">
+      <button class="lang-toggle" onclick="toggleLang()" id="langBtn">SW</button>
+      <a class="btn btn-primary" href="#pricing" data-i18n="nav_cta">Start free pilot</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">🇹🇿 <span data-i18n="eyebrow">Built in Tanzania, for Tanzanian schools</span></span>
+    <h1><span data-i18n="h1a">Run your whole school from</span> <span class="grad" data-i18n="h1b">one beautiful system</span></h1>
+    <p class="sub" data-i18n="sub">Fees collected by M-Pesa and bank, statutory payroll, report cards, attendance, boarding — with an AI assistant that works even offline. Fully in English and Kiswahili.</p>
+    <div class="hero-ctas">
+      <a class="btn btn-primary" href="#pricing" data-i18n="cta1">Try the live demo school</a>
+      <a class="btn btn-ghost" href="#compare" data-i18n="cta2">See how we compare</a>
+    </div>
+    <p class="hero-note" data-i18n="note">No installation · works on any computer or phone · first term free for pilot schools</p>
+
+    <div class="stats">
+      <div class="stat"><b>60s</b><span data-i18n="s1">to explore the full demo school</span></div>
+      <div class="stat"><b>4+</b><span data-i18n="s2">payment rails: M-Pesa, Tigo, Airtel, banks</span></div>
+      <div class="stat"><b>2</b><span data-i18n="s3">languages — English & Kiswahili everywhere</span></div>
+      <div class="stat"><b>100%</b><span data-i18n="s4">of AI drafts approved by humans</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker" data-i18n="k1">Everything a school runs on</span>
+      <h2 data-i18n="f_title">From the front gate to the bank statement</h2>
+      <p data-i18n="f_sub">Seventeen modules that talk to each other — so the bursar, headteacher and parents all see the same truth.</p>
+    </div>
+    <div class="grid grid-3">
+      <div class="card"><div class="ico b-green">💸</div><h3 data-i18n="f1">Fees that collect themselves</h3><p data-i18n="f1d">Each invoice gets a Luhn-verified control number. Parents pay via M-Pesa, Tigo Pesa, Airtel, NMB or CRDB — receipts post automatically and reconcile nightly.</p></div>
+      <div class="card"><div class="ico b-blue">🧮</div><h3 data-i18n="f2">Payroll the TRA would respect</h3><p data-i18n="f2d">PAYE, NSSF/PSSSF, SDL, WCF and HESLB computed from versioned statutory tables — when the Finance Act changes, update one row, not your software.</p></div>
+      <div class="card"><div class="ico b-violet">✨</div><h3 data-i18n="f3">AI that works offline</h3><p data-i18n="f3d">Report-card comments, parent answers and early-warning flags — generated locally with no GPU and no internet, upgraded by an in-region LLM when you want it.</p></div>
+      <div class="card"><div class="ico b-amber">📋</div><h3 data-i18n="f4">Report cards & ID cards, print-ready</h3><p data-i18n="f4d">Auto-ranked report cards in English + Kiswahili and barcode student IDs — printed straight from the browser, 8 per A4 sheet.</p></div>
+      <div class="card"><div class="ico b-rose">🤝</div><h3 data-i18n="f5">Harambee with accountability</h3><p data-i18n="f5d">Every fundraising campaign gets its own control number, live thermometer and public donor page. Every shilling visible. Hakuna mchezo.</p></div>
+      <div class="card"><div class="ico b-cyan">🔒</div><h3 data-i18n="f6">Security you can verify</h3><p data-i18n="f6d">School data is isolated by the database itself, the audit log cannot be rewritten — not even by us — and payment webhooks are cryptographically verified.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="pulse">
+  <div class="wrap">
+    <div class="pulse-band">
+      <div>
+        <span class="kicker" style="color:#9db9f7" data-i18n="k2">Nobody else has this</span>
+        <h2 data-i18n="p_title">Shule Pulse — your school in one SMS, every morning at 06:30</h2>
+        <p data-i18n="p_sub">Not a dashboard you have to study. A briefing you read with your morning chai — attendance dips, cash position, students who need you today. Works on any phone, no app, no internet.</p>
+        <ul class="pulse-list">
+          <li data-i18n="p1">Role-aware: the bursar's Pulse talks money, the teacher's talks students</li>
+          <li data-i18n="p2">Generated nightly from real data — never generic</li>
+          <li data-i18n="p3">In English au Kiswahili — chaguo lako</li>
+        </ul>
+      </div>
+      <div class="phone">
+        <div class="sms" id="smsDemo">
+          <b>Shule Pulse 12/06:</b> Attendance 92% (Std 4 dipped to 86%). Fees 33.4M/38.6M (87%). Arrears 5.2M. 3 students need follow-up today. Bank balance covers June payroll.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker" data-i18n="k3">Honest comparison</span>
+      <h2 data-i18n="c_title">Why schools switch to Lumora</h2>
+      <p data-i18n="c_sub">Typical school systems in the market handle academics. Lumora handles the school.</p>
+    </div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th data-i18n="c_h1">Capability</th><th>Lumora</th><th data-i18n="c_h3">Typical competitor</th></tr></thead>
+      <tbody>
+        <tr><td data-i18n="c1">Morning SMS briefing (Shule Pulse)</td><td class="yes">✓ Unique</td><td class="no">—</td></tr>
+        <tr><td data-i18n="c2">AI that works without internet/GPU</td><td class="yes">✓ Local-first</td><td class="part" data-i18n="cloud">Cloud-only</td></tr>
+        <tr><td data-i18n="c3">Kiswahili across every screen + AI output</td><td class="yes">✓ Full</td><td class="part" data-i18n="partial">Partial</td></tr>
+        <tr><td data-i18n="c4">Harambee fundraising with public transparency</td><td class="yes">✓ Unique</td><td class="no">—</td></tr>
+        <tr><td data-i18n="c5">Database-enforced school isolation + immutable audit log</td><td class="yes">✓ Provable</td><td class="part" data-i18n="appcode">App-code only</td></tr>
+        <tr><td data-i18n="c6">Statutory payroll (PAYE/NSSF/SDL/WCF/HESLB), versioned rates</td><td class="yes">✓ Tested</td><td class="part" data-i18n="varies">Varies</td></tr>
+        <tr><td data-i18n="c7">Full double-entry accounting (DR = CR enforced)</td><td class="yes">✓</td><td class="part" data-i18n="varies2">Varies</td></tr>
+        <tr><td data-i18n="c8">Mobile money + bank + GePG + cash dual-control</td><td class="yes">✓ All rails</td><td class="part" data-i18n="some">Some rails</td></tr>
+        <tr><td data-i18n="c9">Explore a full demo school with zero signup</td><td class="yes">✓ 60 seconds</td><td class="no" data-i18n="salescall">Sales call first</td></tr>
+        <tr><td data-i18n="c10">Boarding, transport & canteen meal wallets</td><td class="yes">✓</td><td class="part" data-i18n="addons">Add-ons</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker" data-i18n="k4">Simple, per student, per term</span>
+      <h2 data-i18n="pr_title">Pricing that fits Tanzanian schools</h2>
+      <p data-i18n="pr_sub">Billed to the school each term. First term free for pilot schools. Minimum TZS 150,000 per school per term.</p>
+    </div>
+    <div class="price-grid">
+      <div class="price">
+        <h3>Msingi</h3>
+        <div class="amount">TZS 1,500</div>
+        <div class="per" data-i18n="per">per student / term</div>
+        <ul>
+          <li data-i18n="m1">Student registry & admissions</li>
+          <li data-i18n="m2">Attendance, exams & report cards</li>
+          <li data-i18n="m3">Fees + M-Pesa & bank collection</li>
+          <li data-i18n="m4">Parent SMS (pay per SMS)</li>
+          <li data-i18n="m5">Shule Pulse for the headteacher</li>
+        </ul>
+        <a class="btn btn-ghost" href="mailto:hello@lumora.app" data-i18n="choose">Choose Msingi</a>
+      </div>
+      <div class="price popular">
+        <span class="pop-badge" data-i18n="popular">Most popular</span>
+        <h3>Shule+</h3>
+        <div class="amount">TZS 2,500</div>
+        <div class="per" data-i18n="per2">per student / term</div>
+        <ul>
+          <li data-i18n="s_1">Everything in Msingi</li>
+          <li data-i18n="s_2">Accounting, payroll & HR</li>
+          <li data-i18n="s_3">Parent app + WhatsApp</li>
+          <li data-i18n="s_4">AI report comments & early warning</li>
+          <li data-i18n="s_5">Harambee fundraising module</li>
+          <li data-i18n="s_6">ID cards & timetable generator</li>
+        </ul>
+        <a class="btn btn-primary" href="mailto:hello@lumora.app" data-i18n="choose2">Choose Shule+</a>
+      </div>
+      <div class="price">
+        <h3>Taasisi</h3>
+        <div class="amount">TZS 4,000</div>
+        <div class="per" data-i18n="per3">per student / term</div>
+        <ul>
+          <li data-i18n="t1">Everything in Shule+</li>
+          <li data-i18n="t2">Boarding, transport & meal wallets</li>
+          <li data-i18n="t3">GePG for public-school fees</li>
+          <li data-i18n="t4">LLM-tier AI (in-region, PII-scrubbed)</li>
+          <li data-i18n="t5">Auditor access & priority support</li>
+        </ul>
+        <a class="btn btn-ghost" href="mailto:hello@lumora.app" data-i18n="choose3">Choose Taasisi</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap" style="max-width:760px">
+    <div class="sec-head"><h2 data-i18n="faq_title">Questions schools ask us</h2></div>
+    <details><summary data-i18n="q1">Do we need new computers or special internet?</summary><p data-i18n="a1">No. Any computer or smartphone from the last decade with a browser works. Teachers mark attendance offline on their phones and it syncs when network returns. The headteacher's Pulse arrives by SMS — no internet needed at all.</p></details>
+    <details><summary data-i18n="q2">How do parents pay fees?</summary><p data-i18n="a2">Every invoice carries a control number. Parents pay via M-Pesa, Tigo Pesa, Airtel Money, NMB or CRDB — from anywhere. The receipt posts automatically and the bursar sees it instantly. Cash at the office is supported with dual-control confirmation.</p></details>
+    <details><summary data-i18n="q3">Is our school's data safe?</summary><p data-i18n="a3">Each school's data is isolated by the database engine itself, the audit trail is immutable (not even system administrators can rewrite it), and data stays in-region in line with the PDPA 2022. We'll happily walk your auditor through it.</p></details>
+    <details><summary data-i18n="q4">What if we already use another system?</summary><p data-i18n="a4">We import your students, guardians and fee balances from Excel in one onboarding session (about half a day), and run the first term alongside your current process so nothing is lost.</p></details>
+    <details><summary data-i18n="q5">Does the AI replace teachers?</summary><p data-i18n="a5">Never. The AI drafts — a teacher or headteacher reads, edits and approves every comment and every message before it reaches a parent or a report card. It saves hours; it doesn't take decisions.</p></details>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="logo"><span class="logo-mark">L</span> Lumora</div>
+    <p data-i18n="footer">Shule Bora — built with care for Tanzanian schools · hello@lumora.app · Dar es Salaam</p>
+  </div>
+</footer>
+
+<script>
+const SW = {
+  nav_features: 'Huduma', nav_pulse: 'Shule Pulse', nav_compare: 'Linganisha', nav_pricing: 'Bei', nav_cta: 'Anza majaribio bure',
+  eyebrow: 'Imejengwa Tanzania, kwa ajili ya shule za Tanzania',
+  h1a: 'Endesha shule yako yote kupitia', h1b: 'mfumo mmoja mzuri',
+  sub: 'Ada zinazokusanywa kwa M-Pesa na benki, mishahara inayofuata sheria, ripoti za wanafunzi, mahudhurio, bweni — pamoja na msaidizi wa AI anayefanya kazi hata bila intaneti. Kwa Kiingereza na Kiswahili kikamilifu.',
+  cta1: 'Jaribu shule ya mfano sasa', cta2: 'Ona tunavyolinganishwa',
+  note: 'Hakuna usakinishaji · inafanya kazi kwenye kompyuta au simu yoyote · muhula wa kwanza bure kwa shule za majaribio',
+  s1: 'kuona shule ya mfano kamili', s2: 'njia za malipo: M-Pesa, Tigo, Airtel, benki', s3: 'lugha — Kiingereza na Kiswahili kote', s4: 'ya rasimu za AI huidhinishwa na binadamu',
+  k1: 'Kila kitu shule inachohitaji', f_title: 'Kuanzia getini hadi taarifa ya benki',
+  f_sub: 'Moduli kumi na saba zinazozungumza — mhasibu, mwalimu mkuu na wazazi wote wanaona ukweli uleule.',
+  f1: 'Ada zinazojikusanya zenyewe', f1d: 'Kila ankara ina namba ya malipo iliyothibitishwa. Wazazi hulipa kwa M-Pesa, Tigo Pesa, Airtel, NMB au CRDB — risiti hujirekodi na kusuluhishwa kila usiku.',
+  f2: 'Mishahara inayoheshimiwa na TRA', f2d: 'PAYE, NSSF/PSSSF, SDL, WCF na HESLB huhesabiwa kutoka kwenye majedwali ya kisheria — sheria ikibadilika, sasisha mstari mmoja tu.',
+  f3: 'AI inayofanya kazi bila intaneti', f3d: 'Maoni ya ripoti, majibu kwa wazazi na tahadhari za mapema — hutengenezwa papo hapo bila GPU wala intaneti.',
+  f4: 'Ripoti na vitambulisho tayari kuchapishwa', f4d: 'Ripoti zilizopangwa kiotomatiki kwa Kiingereza + Kiswahili na vitambulisho vyenye barcode — chapisha moja kwa moja kutoka kivinjari.',
+  f5: 'Harambee yenye uwazi', f5d: 'Kila kampeni ina namba yake ya malipo, kipimo cha moja kwa moja na ukurasa wa wazi wa wachangiaji. Kila shilingi inaonekana. Hakuna mchezo.',
+  f6: 'Usalama unaothibitishwa', f6d: 'Data ya kila shule inatengwa na hifadhidata yenyewe, kumbukumbu za ukaguzi haziwezi kufutwa — hata na sisi — na malipo yanathibitishwa kwa njia ya kriptografia.',
+  k2: 'Hakuna mwingine mwenye hii', p_title: 'Shule Pulse — shule yako katika SMS moja, kila asubuhi saa 12:30',
+  p_sub: 'Si dashibodi ya kusoma kwa muda mrefu. Ni taarifa fupi unayosoma na chai yako ya asubuhi — mahudhurio yaliyoshuka, hali ya fedha, wanafunzi wanaokuhitaji leo. Inafanya kazi kwenye simu yoyote, bila app, bila intaneti.',
+  p1: 'Kulingana na jukumu: Pulse ya mhasibu inazungumza fedha, ya mwalimu inazungumza wanafunzi',
+  p2: 'Hutengenezwa kila usiku kutoka kwenye data halisi — kamwe si ya jumla', p3: 'Kwa Kiingereza au Kiswahili — chaguo lako',
+  k3: 'Ulinganisho wa kweli', c_title: 'Kwa nini shule zinahamia Lumora', c_sub: 'Mifumo ya kawaida hushughulikia taaluma. Lumora inashughulikia shule nzima.',
+  c_h1: 'Uwezo', c_h3: 'Mfumo wa kawaida',
+  c1: 'Taarifa ya asubuhi kwa SMS (Shule Pulse)', c2: 'AI inayofanya kazi bila intaneti/GPU', c3: 'Kiswahili kwenye kila skrini + majibu ya AI',
+  c4: 'Harambee yenye uwazi kwa umma', c5: 'Utengaji wa data unaolazimishwa na hifadhidata + kumbukumbu zisizofutika',
+  c6: 'Mishahara ya kisheria (PAYE/NSSF/SDL/WCF/HESLB), viwango vilivyohifadhiwa', c7: 'Uhasibu kamili wa double-entry (DR = CR)',
+  c8: 'Pesa za simu + benki + GePG + fedha taslimu', c9: 'Jaribu shule ya mfano bila kujisajili', c10: 'Bweni, usafiri na pochi za chakula',
+  cloud: 'Wingu tu', partial: 'Sehemu', appcode: 'Programu tu', varies: 'Inatofautiana', varies2: 'Inatofautiana', some: 'Baadhi', salescall: 'Mauzo kwanza', addons: 'Nyongeza',
+  k4: 'Rahisi, kwa mwanafunzi, kwa muhula', pr_title: 'Bei zinazolingana na shule za Tanzania',
+  pr_sub: 'Shule hulipa kila muhula. Muhula wa kwanza bure kwa shule za majaribio. Kima cha chini TZS 150,000 kwa shule kwa muhula.',
+  per: 'kwa mwanafunzi / muhula', per2: 'kwa mwanafunzi / muhula', per3: 'kwa mwanafunzi / muhula', popular: 'Inayopendwa zaidi',
+  m1: 'Usajili wa wanafunzi na udahili', m2: 'Mahudhurio, mitihani na ripoti', m3: 'Ada + makusanyo ya M-Pesa na benki', m4: 'SMS kwa wazazi (lipa kwa SMS)', m5: 'Shule Pulse kwa mwalimu mkuu',
+  s_1: 'Yote ya Msingi', s_2: 'Uhasibu, mishahara na utumishi', s_3: 'App ya wazazi + WhatsApp', s_4: 'Maoni ya AI na tahadhari za mapema', s_5: 'Moduli ya Harambee', s_6: 'Vitambulisho na ratiba otomatiki',
+  t1: 'Yote ya Shule+', t2: 'Bweni, usafiri na pochi za chakula', t3: 'GePG kwa shule za umma', t4: 'AI ya LLM (ndani ya kanda)', t5: 'Mkaguzi na msaada wa kipaumbele',
+  choose: 'Chagua Msingi', choose2: 'Chagua Shule+', choose3: 'Chagua Taasisi',
+  faq_title: 'Maswali shule zinazotuuliza',
+  q1: 'Je, tunahitaji kompyuta mpya au intaneti maalum?', a1: 'Hapana. Kompyuta au simu yoyote ya miaka kumi iliyopita yenye kivinjari inatosha. Walimu huweka mahudhurio bila intaneti na husawazishwa mtandao ukirudi. Pulse ya mwalimu mkuu huja kwa SMS — hakuna intaneti inayohitajika.',
+  q2: 'Wazazi wanalipaje ada?', a2: 'Kila ankara ina namba ya malipo. Wazazi hulipa kwa M-Pesa, Tigo Pesa, Airtel Money, NMB au CRDB — popote walipo. Risiti hujirekodi mara moja. Fedha taslimu ofisini zinakubaliwa kwa uthibitisho wa watu wawili.',
+  q3: 'Je, data ya shule yetu iko salama?', a3: 'Data ya kila shule inatengwa na injini ya hifadhidata yenyewe, kumbukumbu za ukaguzi haziwezi kubadilishwa, na data hubaki ndani ya kanda kwa mujibu wa PDPA 2022. Tutamwelezea mkaguzi wako kwa furaha.',
+  q4: 'Vipi kama tayari tunatumia mfumo mwingine?', a4: 'Tunahamisha wanafunzi, wazazi na madeni kutoka Excel katika kikao kimoja (nusu siku), na kuendesha muhula wa kwanza sambamba na utaratibu wenu ili kisipotee chochote.',
+  q5: 'Je, AI inachukua nafasi ya walimu?', a5: 'Kamwe. AI inaandaa rasimu tu — mwalimu husoma, kuhariri na kuidhinisha kila maoni na kila ujumbe kabla haujamfikia mzazi. Inaokoa masaa; haifanyi maamuzi.',
+  footer: 'Shule Bora — imejengwa kwa upendo kwa shule za Tanzania · hello@lumora.app · Dar es Salaam',
+  sms: '<b>Shule Pulse 12/06:</b> Mahudhurio 92% (Std 4 imeshuka 86%). Ada: 33.4M/38.6M (87%). Madeni 5.2M. Wanafunzi 3 wanahitaji ufuatiliaji leo. Salio la benki linatosha mishahara ya Juni.',
+};
+const EN = {};
+let lang = 'en';
+function toggleLang() {
+  if (lang === 'en') {
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      const k = el.getAttribute('data-i18n');
+      if (!(k in EN)) EN[k] = el.innerHTML;
+      if (SW[k]) el.innerHTML = SW[k];
+    });
+    if (!EN['sms']) EN['sms'] = document.getElementById('smsDemo').innerHTML;
+    document.getElementById('smsDemo').innerHTML = SW.sms;
+    document.getElementById('langBtn').textContent = 'EN';
+    document.documentElement.lang = 'sw';
+    lang = 'sw';
+  } else {
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      const k = el.getAttribute('data-i18n');
+      if (EN[k]) el.innerHTML = EN[k];
+    });
+    document.getElementById('smsDemo').innerHTML = EN['sms'];
+    document.getElementById('langBtn').textContent = 'SW';
+    document.documentElement.lang = 'en';
+    lang = 'en';
+  }
+}
+</script>
+</body>
+</html>

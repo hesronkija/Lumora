@@ -28,6 +28,10 @@ const dict = {
   settings: ['Settings', 'Mipangilio'],
   exams: ['Exams & Grading', 'Mitihani na Matokeo'],
   comms: ['Communications', 'Mawasiliano'],
+  pulse: ['Shule Pulse', 'Shule Pulse'],
+  timetable: ['Timetable', 'Ratiba'],
+  idcards: ['ID Cards', 'Vitambulisho'],
+  harambee: ['Harambee', 'Harambee'],
 
   // common
   search: ['Search…', 'Tafuta…'],
